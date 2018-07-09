@@ -6,6 +6,7 @@ import vdom.html_<^._
 import ScalazReact._
 import org.scalajs.dom.document
 import scalaz.effect.{IO}
+import tutorial.webapp.model._
 
 final object TutorialApp {
   def run(args: ImmutableArray[String]): IO[Unit] = {
@@ -19,12 +20,6 @@ final object TutorialApp {
   }
 }
 
-sealed abstract class TodoItem {
-  def title: String
-  def id: Int
-}
-final case class Incomplete(title: String, id: Int) extends TodoItem
-final case class Complete(title: String, id: Int) extends TodoItem
 
 final object AppComponent {
   final case class State(
@@ -32,15 +27,18 @@ final object AppComponent {
                           nextId: Int = 0
                         )
   val ST = ReactS.Fix[State]
+  type Foo[M[_], A] = StateT[M, State, A]
 
   final class Backend($: BackendScope[Unit, State]) {
-    def addItem(t: String) = ST.mod(state => {
-      val newItem = Incomplete(t, state.nextId)
-      state.copy(
-        state.todos ++ ImmutableArray.fromArray(Array(newItem)),
-        state.nextId + 1
-      )
-    })
+    def addItem(t: String): CallbackTo[Unit] =
+      $.runState(for {
+        state <- ST.get
+        newItem = Incomplete(t, state.nextId)
+        _ <- ST.set(state.copy(
+          state.todos ++ ImmutableArray.fromArray(Array(newItem)),
+          state.nextId + 1
+        ))
+      } yield ())
     def removeItem(item: TodoItem) = ST.mod(state =>
       state.copy(state.todos.filter(_.id != item.id))
     )
@@ -48,7 +46,7 @@ final object AppComponent {
       ReactFragment(
         <.p("Todo App"),
         InputComponent.C(
-          InputComponent.Props(title => $.runState(addItem(title)))
+          InputComponent.Props(title => addItem(title))
         ),
         TodoListComponent(
           TodoListComponent.Props(state.todos, item => $.runState(removeItem(item)))
