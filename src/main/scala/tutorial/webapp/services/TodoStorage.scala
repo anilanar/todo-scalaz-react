@@ -1,9 +1,8 @@
 package tutorial.webapp.services
 
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 import tutorial.webapp.model._
-import tutorial.webapp.services.LocalStorage._
 
 import scala.scalajs.js
 

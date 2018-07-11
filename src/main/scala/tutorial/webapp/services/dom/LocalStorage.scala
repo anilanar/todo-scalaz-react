@@ -1,4 +1,4 @@
-package tutorial.webapp.services
+package tutorial.webapp.services.dom
 
 import org.scalajs.dom.ext.{LocalStorage => L}
 import scalaz._
