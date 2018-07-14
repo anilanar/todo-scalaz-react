@@ -5,8 +5,9 @@ import japgolly.scalajs.react._
 import vdom.html_<^._
 import ScalazReact._
 import org.scalajs.dom.document
-import scalaz.effect.{IO}
+import scalaz.effect.IO
 import tutorial.webapp.model._
+import tutorial.webapp.services.TodoStorage.{StorageState, TodoStorageBusiness}
 
 final object TutorialApp {
   def run(args: ImmutableArray[String]): IO[Unit] = {
@@ -22,40 +23,27 @@ final object TutorialApp {
 
 
 final object AppComponent {
-  final case class State(
-                          todos: ImmutableArray[TodoItem] = ImmutableArray.fromArray(Array.empty),
-                          nextId: Int = 0
-                        )
-  val ST = ReactS.Fix[State]
-  type Foo[M[_], A] = StateT[M, State, A]
+//  val ST = ReactS.Fix[State]
+//  type Foo[M[_], A] = StateT[M, State, A]
+  private val TS = TodoStorageBusiness[StateT[IO, StorageState, ?]]
 
-  final class Backend($: BackendScope[Unit, State]) {
-    def addItem(t: String): CallbackTo[Unit] =
-      $.runState(for {
-        state <- ST.get
-        newItem = Incomplete(t, state.nextId)
-        _ <- ST.set(state.copy(
-          state.todos ++ ImmutableArray.fromArray(Array(newItem)),
-          state.nextId + 1
-        ))
-      } yield ())
-    def removeItem(item: TodoItem) = ST.mod(state =>
-      state.copy(state.todos.filter(_.id != item.id))
-    )
-    def render(state: State) =
+  final class Backend($: BackendScope[Unit, StorageState]) {
+    def addItem(t: String) = $.runState(TS.addTodo(t).liftS)
+    def removeItem(item: TodoItem) = $.runState(TS.removeTodo(item).liftS)
+    def render(state: StorageState) =
       ReactFragment(
         <.p("Todo App"),
         InputComponent.C(
-          InputComponent.Props(title => addItem(title))
+          InputComponent.Props(addItem _)
         ),
         TodoListComponent(
-          TodoListComponent.Props(state.todos, item => $.runState(removeItem(item)))
+          TodoListComponent.Props(state.todos, removeItem _)
         )
       )
   }
 
   val C = ScalaComponent.builder[Unit]("AppComponent")
-    .initialState(State())
+    .initialState(StorageState())
     .renderBackend[Backend]
     .build
 }

@@ -1,23 +1,36 @@
 package tutorial.webapp.algebra
 
-import japgolly.scalajs.react.ScalazReact._
-import japgolly.scalajs.react._
-import scalaz.Scalaz._
-import scalaz._
-import scalaz.effect._
+import scalaz.{Foldable, ImmutableArray}
 import tutorial.webapp.model.{Incomplete, TodoItem}
 
+trait Storage[F[_]] {
+  def add(item: TodoItem): F[Unit]
+  def remove(item: TodoItem): F[Unit]
+  def getAll: F[ImmutableArray[TodoItem]]
+}
+trait PersistentStorage[F[_]] extends Storage[F] {
+  def nextId: F[Int]
+}
+trait MemoryStorage[F[_]] extends Storage[F]
 
-object TodoStorage {
-  sealed abstract case class TodoState(todos: ImmutableArray[TodoItem])
+object Storage { self =>
+  def add[F[_]](item: TodoItem)(implicit S: Storage[F]): F[Unit] = S.add(item)
+  def remove[F[_]](item: TodoItem)(implicit S: Storage[F]): F[Unit] = S.remove(item)
+  def getAll[F[_]](implicit S: Storage[F]): F[ImmutableArray[TodoItem]] = S.getAll
+}
 
-  trait Storage[F[_], T] {
-    def add(item: TodoItem): F[Unit]
-    def remove(item: TodoItem): F[Unit]
-    def nextId: F[Int]
-  }
-  trait PersistentStorage[F[_], T] extends Storage[F, T]
-  trait MemoryStorage[F[_], T] extends Storage[F, T]
+object PersistentStorage {
+  def add[F[_]](item: TodoItem)(implicit S: PersistentStorage[F]): F[Unit] = S.add(item)
+  def remove[F[_]](item: TodoItem)(implicit S: PersistentStorage[F]): F[Unit] = S.remove(item)
+  def getAll[F[_]](implicit S: PersistentStorage[F]): F[ImmutableArray[TodoItem]] = S.getAll
+  def nextId[F[_]](implicit S: PersistentStorage[F]): F[Int] = S.nextId
+}
+
+object MemoryStorage {
+  def add[F[_]](item: TodoItem)(implicit S: MemoryStorage[F]): F[Unit] = S.add(item)
+  def remove[F[_]](item: TodoItem)(implicit S: MemoryStorage[F]): F[Unit] = S.remove(item)
+  def getAll[F[_]](implicit S: MemoryStorage[F]): F[ImmutableArray[TodoItem]] = S.getAll
+}
 
 //  implicit val todoPersistantStorage = new PersistentStorage[IO, TodoItem] {
 //    def add(item: TodoItem) =
@@ -44,7 +57,7 @@ object TodoStorage {
 //  }
 //
 //  def foo = TodoBusiness[IO, TodoItem].add(Incomplete("", 0))
-}
+//}
 
 
 
